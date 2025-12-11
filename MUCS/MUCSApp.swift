@@ -10,6 +10,9 @@ import SwiftData
 
 @main
 struct MUCSApp: App {
+    
+    // List categories of components
+
     var sharedModelContainer: ModelContainer = {
         let schema = Schema([
             Item.self,
@@ -25,7 +28,7 @@ struct MUCSApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            ContentView(s: GUIState())
         }
         .modelContainer(sharedModelContainer)
     }
