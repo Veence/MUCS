@@ -6,43 +6,58 @@
 //
 import SwiftUI
 
-// A struct containing components definitions
+// A struct describing the component's symbol
+struct Symbol {
+    let width: CGFloat
+    let height: CGFloat
+    let portCoordinates: [CGPoint]
+    let path: (CGRect) -> Path
+}
 
-protocol Component: Identifiable {
+// For rotating symbols
+enum Rotation {
+    case r0
+    case r90
+    case r180
+    case r270
+}
+
+struct PlacedComponent: Identifiable {
+    let id: ObjectIdentifier                                        // ID
+    let name: String                                                // Name (R1, C3…)
+    let comp: any Component                                         // The component itself
+    let pos: CGPoint                                                // Its coordinates
+    let rot: Rotation                                               // Rotation applied
+}
+
+// A struct containing component characteristics
+protocol Component {
     var type: String {get}                                          // Component type name
-    var id: String {get}                                            // UUID
-    var name: String {get set}                                      // Displayed name
+    var name: String {get set}                                      // Prefix (R, C, L …)
     var nbOfPorts: Int {get}                                        // Number of ports (2 dipole, etc.)
     
-    var graphicSymbol: () -> Canvas<EmptyView> {get}                // Draw the symbol
-    var ratio: Double {get}                                         // w/h ratio for the symbol
-    
-    var nbOfConn: Int {get}
-    var coord: (CGFloat, CGFloat) {get set}
-    var connCoord: [(CGFloat, CGFloat)] {get}
+    var symbol: Symbol {get}                                        // Draw the symbol
 }
 
 // Resistor drawn as a wiggle
-
 struct ResistorWiggle: @MainActor Component {
-    let type: String = "Resistor"
-    let id: String = UUID().uuidString
+    let type: String = "ResistorWiggle"
     var name: String = "Rx"
-    var nbOfPorts: Int = 2
+    let nbOfPorts: Int = 2
     
-    // Draw the wiggle
-    let graphicSymbol: () -> Canvas = {
-        return Canvas {ctxt, size in
+    // Graphic data
+    let symbol = Symbol(
+        width: 8.0,
+        height: 2.0,
+        portCoordinates: [.init(x: -0.5, y: 0), .init(x: 0.5, y: 0)],
+        path: {rect in
             
-            let H = min (size.width / 4, size.height)
-            
-            let w = size.width / 16
-            let h = H / 2
+            let w = rect.size.width / 16
+            let h = rect.size.height / 2
             
             var path = Path()
             path.move(to: CGPoint(x: h / 10, y: h))
             path.addEllipse(in: CGRect(x: h / 10, y: h - h / 20, width: h / 10, height: h / 10))
-            ctxt.fill(path, with: .foreground)
             
             path.move(to: CGPoint(x: h / 10, y: h))
             path.addLine(to: CGPoint(x: 2 * w, y: h))
@@ -56,61 +71,42 @@ struct ResistorWiggle: @MainActor Component {
             path.addLine(to: CGPoint(x: 16 * w, y: h))
             path.move(to: CGPoint(x: 16 * w - h / 10, y: h - h / 20))
             
-            ctxt.stroke(path, with: .foreground)
-            
-            path = Path ()
             path.addEllipse(in: CGRect(x: 16 * w - h / 10, y: h - h / 20, width: h / 10, height: h / 10))
-            ctxt.fill(path, with: .foreground)
             
+            return path
         }
-    }
-    let ratio = 2.0
-    
-    let nbOfConn: Int = 2
-    var coord: (CGFloat, CGFloat) = (0, 0)
-    let connCoord: [(CGFloat, CGFloat)] = [(0.5, 0), (0.5, 1)]
-    
+    )
 }
 
-// Resistor drawn as a box
 
+// Resistor drawn as a box
 struct ResistorBox: @MainActor Component {
-    let type: String = "Resistor"
-    var id: String = UUID().uuidString
+    let type: String = "ResistorBox"
     var name: String = "Rx"
-    var parameters: [String: (Double, String, Bool)] = [:]
     var nbOfPorts: Int = 2
     
     // Draw the wiggle
-    let graphicSymbol: () -> Canvas = {
-        return Canvas {ctxt, size in
+    let symbol = Symbol (
+        width: 8.0,
+        height: 2.0,
+        portCoordinates: [.init(x: -0.5, y: 0), .init(x: 0.5, y: 0)],
+        path: {rect in
             
-            let H = min (size.width / 4, size.height)
-            
-            let w = size.width / 16
-            let h = H / 2
+            let w = rect.size.width / 16
+            let h = rect.size.height / 2
             
             var path = Path()
             path.move(to: CGPoint(x: h / 10, y: h))
             path.addEllipse(in: CGRect(x: h / 10, y: 19 * h / 20, width: h / 10, height: h / 10))
-            ctxt.fill(path, with: .foreground)
             
-            path = Path ()
             path.move(to: CGPoint(x: h / 10, y: h))
             path.addLine(to: CGPoint(x: 2 * w, y: h))
             path.addRect(CGRect(x: 2 * w, y: 0, width: 12 * w, height: 2 * h))
             path.move(to: CGPoint(x: 14 * w, y: h))
             path.addLine(to: CGPoint(x: 16 * w, y: h))
-            ctxt.stroke(path, with: .foreground)
             
-            path = Path ()
             path.addEllipse(in: CGRect(x: 16 * w - h / 10, y: 19 * h / 20, width: h / 10, height: h / 10))
-            ctxt.fill(path, with: .foreground)
+            return path
         }
-    }
-    let ratio = 2.0
-    
-    let nbOfConn: Int = 2
-    var coord: (CGFloat, CGFloat) = (0, 0)
-    let connCoord: [(CGFloat, CGFloat)] = [(0.5, 0), (0.5, 1)]
+    )
 }

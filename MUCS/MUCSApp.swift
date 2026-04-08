@@ -28,7 +28,7 @@ struct MUCSApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView(s: GUIState())
+            MainView()
         }
         .modelContainer(sharedModelContainer)
     }

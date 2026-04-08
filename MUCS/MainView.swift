@@ -8,9 +8,15 @@
 import SwiftUI
 import SwiftData
 
-struct ContentView: View {
+struct MainView: View {
     
-    @State var s: GUIState
+    @State private var s = GUIState ()
+    
+    func gridCell(comp: any Component, width: CGFloat) -> Path {
+        let ratio = comp.symbol.height / comp.symbol.width
+        return comp.symbol.path(CGRect(x: 0, y: 0, width: width, height: width * ratio))
+            
+    }
     
     var body: some View {
         NavigationSplitView(
@@ -25,50 +31,29 @@ struct ContentView: View {
             }
             ,content: {
                 if let selectedIndex = s.selectedCategoryIndex {
+                    let comps = categories[selectedIndex].components
                     GeometryReader {geom in
-                        VStack(alignment: .center) {
-                            let comps = categories[selectedIndex].components
-                            Grid(alignment: .top) {
-                                ForEach(0..<comps.count, id: \.self) {idx in
-                                    if idx.isMultiple(of: 2) {
-                                        GridRow {
-                                            let w = geom.size.width / 3
-                                            let r = comps[idx]().ratio
-                                            comps[idx]().graphicSymbol()
-                                                .frame(width: w, height: w / r)
-                                                .onTapGesture { s.selectedComp = comps[idx]() }
-                                            if idx + 1 < comps.count {
-                                                Spacer ()
-                                                let r = comps[idx + 1]().ratio
-                                                comps[idx + 1]().graphicSymbol()
-                                                    .frame(width: w, height: w / r)
-                                                    .onTapGesture { s.selectedComp = comps[idx + 1]() }
-                                            } else {
-                                                EmptyView()
-                                            }
-                                        }
-                                    }
+                        Grid(alignment: .center, horizontalSpacing: 10, verticalSpacing: 10) {
+                            ForEach(0..<comps.count, id: \.self) {idx in
+                                GridRow(alignment: .center) {
+                                    let comp = comps[idx]()
+                                    let color: Color = idx == s.selectedIdx ? .accentColor : .secondary
+                                    gridCell(comp: comp, width: geom.size.width)
+                                        .stroke(color, lineWidth: 2)
+                                        .contentShape(Rectangle())
+                                        .onTapGesture { s.selectedComp = comp
+                                                        s.selectedIdx = idx }
                                 }
                             }
-                            .padding(10)
                         }
-                        Spacer ()
-                        
                     }
+                    .padding(10)
                 }
             }
             ,detail: {
-                GeometryReader { geom in
+                ScrollView([.horizontal, .vertical]) {
                     ZStack {
-                        Canvas(opaque: true, colorMode: .linear) {ctx, size in
-                            ctx.fill(Path(CGRect(x: 0, y: 0, width: size.width, height: size.height)), with: .color(s.backgroundColor))}
-                        .onHover {isIn in s.mouseInCanvas = isIn}
-                        .onChange(of: s.mouseInCanvas) {s.backgroundColor = s.mouseInCanvas ? .blue : .gray}
-                        
-                        if let sComp = s.selectedComp {
-                            sComp.graphicSymbol().position(CGPoint(x: 0, y: 0))
-                                .frame(width: 400, height: 200)
-                        }
+                        Background(s: s)
                     }
                 }
             }
@@ -76,6 +61,7 @@ struct ContentView: View {
     }
 }
 
+
 #Preview {
-    ContentView(s: .init())
+    MainView()
 }
