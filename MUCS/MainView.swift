@@ -10,12 +10,16 @@ import SwiftData
 
 struct MainView: View {
     
-    @State private var s = GUIState ()
+    @State var s: GUIState
     
     func gridCell(comp: any Component, width: CGFloat) -> Path {
         let ratio = comp.symbol.height / comp.symbol.width
         return comp.symbol.path(CGRect(x: 0, y: 0, width: width, height: width * ratio))
-            
+        
+    }
+    
+    func snapToGrid(point: CGPoint) -> CGPoint {
+        CGPoint(x: round(point.x / s.gridSpacing) * s.gridSpacing, y: round(point.y / s.gridSpacing) * s.gridSpacing)
     }
     
     var body: some View {
@@ -42,7 +46,7 @@ struct MainView: View {
                                         .stroke(color, lineWidth: 2)
                                         .contentShape(Rectangle())
                                         .onTapGesture { s.selectedComp = comp
-                                                        s.selectedIdx = idx }
+                                            s.selectedIdx = idx }
                                 }
                             }
                         }
@@ -51,17 +55,40 @@ struct MainView: View {
                 }
             }
             ,detail: {
-                ScrollView([.horizontal, .vertical]) {
+                VStack {
                     ZStack {
                         Background(s: s)
+                        
+                        // Scroll view to handle the coordinates
+                        ScrollView([.horizontal, .vertical]) {
+                            Color.clear
+                                .frame(width: s.worldSize * s.zoom, height: s.worldSize * s.zoom)
+                        }
+                        .coordinateSpace(name: CoordinateSpace.named("SheetSpace"))
+                        .onScrollGeometryChange(for: CGPoint.self,
+                                                of: {geom in
+                            let x = geom.contentOffset.x - geom.contentInsets.leading
+                            let y = geom.contentOffset.y + geom.contentInsets.top
+                            return CGPoint(x: x, y: y)})
+                        {_, new in s.offset = new}
+                    }
+                    .onContinuousHover { phase in
+                        switch phase {
+                            case .active(let location): s.mPos = s.snapToGrid ? snapToGrid (point: location) : location
+                            case .ended: s.mPos = nil; break
+                        }
                     }
                 }
+                Spacer ()
+                Text ("Mouse: \((s.mPos ?? .zero).debugDescription), Offset: \(s.offset.debugDescription), Zoom: \(s.zoom)")
             }
         )
     }
+    
 }
 
 
 #Preview {
-    MainView()
+    MainView(s: GUIState())
 }
+

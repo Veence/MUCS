@@ -13,10 +13,10 @@ import SwiftUI
 @Observable
 final class GUIState {
     
-    var backgroundColor: Color = .gray
+    var backgroundColor: Color = .black
     
     var useGrid: Bool = true                                    // Display grid?
-    var gridColor: Color = Color(white: 0.5)                    // Mid-grey
+    var gridColor: Color = Color(white: 1.0, opacity: 0.5)                    // Mid-grey
     var gridSpacing: CGFloat = 20                               // Default grid spacing
     var snapToGrid: Bool = true                                 // Snap to grid for components/wire placement
     var selectedIdx: Int? = nil
@@ -25,41 +25,39 @@ final class GUIState {
     var selectedCategory: UUID?
     var selectedCategoryIndex: Int?
     
-    var zoom: CGFloat = 1.0
-    var offset: CGPoint = .init(x: 0, y: 0)
     var worldSize: CGFloat = 5000
+    var zoom: CGFloat = 1.0
+    let possibleZooms = [0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0, 20.0, 50.0, 100.0]
+
+    var scrollPos : ScrollPosition = .init(point: .zero)
+    var offset: CGPoint = .zero
+    
+    var mouseIn: Bool = false
         
     // Positions logiques et physiques
-    var mScreenPos: CGPoint? = nil
-    var mSpacePos: CGPoint? {
-        if let mSP = mScreenPos {
-            let x = mSP.x * zoom + offset.x
-            let y = mSP.y * zoom + offset.y
-            return .init(x: x, y: y)
-        }
-        return nil
-    }
+    var mPos: CGPoint? = nil
+    
+    
+    // Zoom
+    func zoomIn () {
+        zoom = min (zoom * 2.0, 16)
         
-    var placedComponents: [PlacedComponent] = []
-    
-    // Conversion routines from physical to virtual space and vice-versa
-    // For CGPoints
-    func _toSpace(point: CGPoint) -> CGPoint {
-        .init(x: point.x * zoom + offset.x, y: point.y * zoom + offset.y)
     }
     
-    func _toScreen(point: CGPoint) -> CGPoint {
-        .init(x: (point.x - offset.x) / zoom, y: (point.y - offset.y) / zoom)
+    func zoomOut () {
+        zoom = max (zoom / 2.0, 0.125)
     }
-    
-    // For CGRects
-    func _toSpace(rect: CGRect) -> CGRect {
-        .init(origin: _toSpace(point: rect.origin), size: rect.size)
+}
+
+// For menu handling
+
+struct GUIStateKey: FocusedValueKey {
+    typealias Value = GUIState
+}
+
+extension FocusedValues {
+    var activeState: GUIState? {
+        get { self[GUIStateKey.self] }
+        set { self[GUIStateKey.self] = newValue }
     }
-    
-    func _toScreen(rect: CGRect) -> CGRect {
-        .init(origin: _toScreen(point: rect.origin), size: rect.size)
-    }
-    
-    
 }
