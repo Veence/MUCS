@@ -16,18 +16,14 @@ final class GUIState {
     var backgroundColor: Color = .black
     
     var useGrid: Bool = true                                    // Display grid?
-    var gridColor: Color = Color(white: 1.0, opacity: 0.5)                    // Mid-grey
+    var gridColor: Color = Color(white: 1.0, opacity: 0.5)      // Mid-grey
     var gridSpacing: CGFloat = 20                               // Default grid spacing
     var snapToGrid: Bool = true                                 // Snap to grid for components/wire placement
-    var selectedIdx: Int? = nil
     
-    var selectedComp: (any Component)?
-    var selectedCategory: UUID?
-    var selectedCategoryIndex: Int?
-    
-    var worldSize: CGFloat = 5000
-    var zoom: CGFloat = 1.0
+    var worldSize: CGFloat = 5000                               // Default sheet size
     let possibleZooms = [0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0, 20.0, 50.0, 100.0]
+    var zoomIndex: Int = 3                                      // Default zoom is 1
+    var zoom: Double {possibleZooms [zoomIndex]}
 
     var scrollPos : ScrollPosition = .init(point: .zero)
     var offset: CGPoint = .zero
@@ -36,16 +32,30 @@ final class GUIState {
         
     // Positions logiques et physiques
     var mPos: CGPoint? = nil
+    var mOff: CGSize {.init(width: mPos?.x ?? 0, height: mPos?.y ?? 0)}
+    var selectedIdx: Int? = nil
     
+    var selectedComp: Component?
+    var selectedCategory: UUID?
+    var selectedCategoryIndex: Int?
+    var compRotation: Rotation?
+    
+    var IDdict: [ComponentType:Int] = Dictionary(uniqueKeysWithValues: ComponentType.allCases.map {($0, 0)})
+    var placedComponents: [PlacedComponent] = []
     
     // Zoom
-    func zoomIn () {
-        zoom = min (zoom * 2.0, 16)
-        
+    
+    func resetZoom () {
+        zoomIndex = 3
     }
     
-    func zoomOut () {
-        zoom = max (zoom / 2.0, 0.125)
+    // Get a new name identifier
+    func getNewIdentifier(forType type: ComponentType) -> Int {
+        if let id = IDdict [type] {
+            IDdict [type] = id + 1
+            return id
+        }
+        fatalError("Inconsistency in \(#function). Unknown component type.")
     }
 }
 

@@ -37,21 +37,20 @@ struct MUCSApp: App {
                     // This adds a new section to the native macOS menus
                     CommandMenu("View") {
                         Button("Zoom In") {
-                            s.zoomIn()
+                            s.zoomIndex = min (s.possibleZooms.count - 1, s.zoomIndex + 1)
                         }
                         .keyboardShortcut("+", modifiers: .command)
                         
 
                         Button("Zoom Out") {
-                            s.zoomOut()
+                            s.zoomIndex = max (0, s.zoomIndex - 1)
                         }
                         .keyboardShortcut("-", modifiers: .command)
-                        
                         
                         Divider()
                         
                         Button("Reset Zoom") {
-                            s.zoom = 1.0
+                            s.resetZoom()
                         }
                         .keyboardShortcut("0", modifiers: .command)
                     }
