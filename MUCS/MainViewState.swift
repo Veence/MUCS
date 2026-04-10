@@ -13,7 +13,8 @@ import SwiftUI
 @Observable
 final class GUIState {
     
-    var backgroundColor: Color = .black
+    var viewportSize: CGSize = .zero                            // Window dimensions
+    var backgroundColor: Color = .black                         // Window background colour
     
     var useGrid: Bool = true                                    // Display grid?
     var gridColor: Color = Color(white: 1.0, opacity: 0.5)      // Mid-grey
@@ -26,11 +27,13 @@ final class GUIState {
     var zoomIndex: Int = 3                                      // Default zoom is 1
     var zoom: Double {possibleZooms [zoomIndex]}
 
+    var scrollDisabled: Bool = false                            // If screen space is greater than sheet size
     var scrollPos : ScrollPosition = .init(point: .zero)
     var offset: CGPoint = .zero
     
     var mouseIn: Bool = false
     var cursorShape: CursorShape = .HairPin
+    
         
     // Positions logiques et physiques
     var mScr: CGPoint? = nil            // Mouse screen position (physical)
@@ -42,7 +45,8 @@ final class GUIState {
     var selectedComp: Component?
     var selectedCategory: UUID?
     var selectedCategoryIndex: Int?
-    var compRotation: Rotation?
+    var rot = 0
+    var rotStep = 90
     
     var IDdict: [ComponentType:Int] = Dictionary(uniqueKeysWithValues: ComponentType.allCases.map {($0, 0)})
     var placedComponents: [PlacedComponent] = []
@@ -78,31 +82,87 @@ final class GUIState {
     }
     
     // Recompute offset after zooming in/out
-    func recomputeOffsetAfterZoom (oldZ: Double, newZ: Double) {
-        offset = .init(
-            x: ((newZ - oldZ) * mOff.x + newZ * offset.x) / oldZ,
-            y: ((newZ - oldZ) * mOff.y + newZ * offset.y) / oldZ)
+    // 2. Refined Zoom Logic
+    func recomputeOffsetAfterZoom(oldZ: Double, newZ: Double) {
+        // Determine the Anchor Point in Screen Space
+        // If mouse is in, use screen mouse pos. If not, use window center.
+        let anchorBtn: CGPoint
+        if let mP = mScr, mouseIn {
+            anchorBtn = mP
+        } else {
+            anchorBtn = CGPoint(x: viewportSize.width / 2, y: viewportSize.height / 2)
+        }
+        
+        // Convert Screen Anchor to Sheet Space (using the OLD zoom/offset)
+        let worldAnchor = CGPoint(
+            x: (anchorBtn.x + offset.x) / oldZ,
+            y: (anchorBtn.y + offset.y) / oldZ
+        )
+        
+        // Calculate the New Offset
+        // This formula ensures worldAnchor stays at the same anchorBtn screen coordinate
+        let newOffX = worldAnchor.x * newZ - anchorBtn.x
+        let newOffY = worldAnchor.y * newZ - anchorBtn.y
+        
+        self.offset = CGPoint(x: newOffX, y: newOffY)
+        
+        // IMPORTANT: Apply clamping immediately so we don't end up in the void
+        clampOffset()
+    }
+
+    func clampOffset() {
+        let worldW = sheetSize.width * zoom
+        let worldH = sheetSize.height * zoom
+        
+        // Horizontal Clamping
+        if worldW <= viewportSize.width {
+            // Center the sheet if it's smaller than the window
+            offset.x = (worldW - viewportSize.width) / 2
+        } else {
+            let maxOffX = worldW - viewportSize.width
+            offset.x = min(max(0, offset.x), maxOffX)
+        }
+        
+        // Vertical Clamping
+        if worldH <= viewportSize.height {
+            offset.y = (worldH - viewportSize.height) / 2
+        } else {
+            let maxOffY = worldH - viewportSize.height
+            offset.y = min(max(0, offset.y), maxOffY)
+        }
     }
     
     // Increase zoom
-    func zoomIn () {
+    func adjustZoom(delta: Int) {
         let oldZoom = zoom
-        zoomIndex = min (zoomIndex + 1, possibleZooms.count - 1)
-        recomputeOffsetAfterZoom(oldZ: oldZoom, newZ: zoom)
-    }
+        
+        // Step zoomIndex based on wheel direction
+        if delta == 1 {zoomIndex = min(zoomIndex + 1, possibleZooms.count - 1)}
+        if delta == 0 {zoomIndex = 3}
+        if delta == -1 {zoomIndex = max(0, zoomIndex - 1)}
     
-    // Decrease zoom
-    func zoomOut () {
-        let oldZoom = zoom
-        zoomIndex = max (0, zoomIndex - 1)
-        recomputeOffsetAfterZoom(oldZ: oldZoom, newZ: zoom)
-    }
-    
-    // Reset zoom
-    func resetZoom () {
-        let oldZoom = zoom
-        zoomIndex = 3
-        recomputeOffsetAfterZoom(oldZ: oldZoom, newZ: 1)
+        let newZoom = zoom
+        
+        // Choose an anchor point in Screen Space
+        // If mouse is "out", use the center of the window
+        let anchorBtn: CGPoint
+        if mouseIn {
+            anchorBtn = mOff
+        } else {
+            anchorBtn = CGPoint(x: viewportSize.width / 2, y: viewportSize.height / 2)
+        }
+        
+        // World coordinate of that anchor BEFORE zoom
+        let worldAnchor = CGPoint(
+            x: (anchorBtn.x + offset.x) / oldZoom,
+            y: (anchorBtn.y + offset.y) / oldZoom
+        )
+        
+        // Update offset to keep worldAnchor under anchorBtn at newZoom
+        self.offset.x = worldAnchor.x * newZoom - anchorBtn.x
+        self.offset.y = worldAnchor.y * newZoom - anchorBtn.y
+        
+        clampOffset()
     }
     
     // Get a new name identifier
@@ -113,5 +173,17 @@ final class GUIState {
         }
         fatalError("Inconsistency in \(#function). Unknown component type.")
     }
+    
+    // Handle mouse click event (or equivalent)
+    func click() {
+        // If we have a selected component, place it on the sheet
+        if let comp = selectedComp, let mP = mPos {
+            let name = comp.name + String (getNewIdentifier(forType: comp.type))
+            placedComponents.append(PlacedComponent(id: UUID().uuidString, name: name, comp: comp, pos: mP, rot: Double (rot)))
+        }
+    }
+
+    // Handle key event
+    
 
 }

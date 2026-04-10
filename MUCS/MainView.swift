@@ -11,24 +11,14 @@ import SwiftData
 struct MainView: View {
     
     @State var s: GUIState
+    @FocusState var canvasFocused: Bool
     
     // Display component symbols in the pick area (left)
     func gridCell(comp: Component, width: CGFloat) -> Path {
         return comp.symbol.path(width)
-        
     }
     
-    
-    // Act on mouse click
-    func click() {
-        // If we have a selected component, place it on the sheet
-        if let comp = s.selectedComp, let mP = s.mPos, let rot = s.compRotation {
-            let name = comp.name + String (s.getNewIdentifier(forType: comp.type))
-            s.placedComponents.append(PlacedComponent(id: UUID().uuidString, name: name, comp: comp, pos: mP, rot: rot))
-            print ("Composant \(name), position \(mP.debugDescription)")
-        }
-    }
-    
+    // Act on mouse click    
     var body: some View {
         NavigationSplitView(
             sidebar: {
@@ -52,7 +42,7 @@ struct MainView: View {
                                     gridCell(comp: comp, width: 10)
                                         .stroke(color, lineWidth: 2)
                                         .contentShape(Rectangle())
-                                        .onTapGesture { s.selectedComp = comp; s.selectedIdx = idx; s.compRotation = .r0 }
+                                        .onTapGesture { s.selectedComp = comp; s.selectedIdx = idx; s.rot = 0 }
                                 }
                             }
                         }
@@ -67,22 +57,38 @@ struct MainView: View {
                         Cursor (s: s)
                         ComponentLayer(s: s)
                     }
+                    .focusable()
+                    .focused($canvasFocused)
+                    .focusEffectDisabled()
                     .overlay {CanvasKeyboardInterceptor(s: s)
                         .allowsHitTesting(true)}
-                    .onHover {isIn in s.mouseIn = isIn; if isIn {NSCursor.hide ()} else {NSCursor.unhide ()}}
                     .onContinuousHover { phase in
                         switch phase {
-                            case .active(let loc):
-                                s.mScr = loc
-                                let absPos = s._toSheet(loc: loc)
+                        case .active(let loc):
+                            s.mScr = loc
+                            let absPos = s._toSheet(loc: loc)
+                            
+                            // Only show the PIN and snap if on the actual paper
+                            if absPos.x >= 0 && absPos.x <= s.sheetSize.width &&
+                               absPos.y >= 0 && absPos.y <= s.sheetSize.height {
                                 s.mPos = s.snapToGrid ? s.snapPoint(loc: absPos) : absPos
-                            case .ended: s.mScr = nil; s.mPos = nil; break
+                                if !s.mouseIn {s.mouseIn = true; NSCursor.hide(); canvasFocused = true}
+                            } else {
+                                s.mPos = nil // Hide crosshair in void
+                                s.mouseIn = false
+                                canvasFocused = false
+                                NSCursor.unhide()
+                            }
+                        case .ended:
+                            s.mouseIn = false
+                            NSCursor.unhide()
                         }
                     }
                     .onTapGesture {
-                        click ()
+                        s.click ()
                     }
-                    
+                    .onKeyPress(.escape) {s.selectedComp = nil; return .handled}
+                    .onKeyPress(KeyEquivalent("r")) {s.rot = (s.rot + s.rotStep) % 360; return .handled}
                     Spacer ()
                     Text ("Mouse: \(s.mPos?.debugDescription ?? "---"), Offset: \((s.offset).debugDescription), Zoom: \(s.zoom)")
                 }

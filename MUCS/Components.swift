@@ -47,19 +47,47 @@ struct Symbol {
     let path: (Double) -> Path
 }
 
-// For rotating symbols
-enum Rotation {
-    case r0
-    case r90
-    case r180
-    case r270
-}
-
 // Component once it is placed on the sheet
 struct PlacedComponent: Identifiable {
     let id: String                                                  // ID
     let name: String                                                // Name (R1, C3…)
     let comp: Component                                             // The component itself
     let pos: CGPoint                                                // Its coordinates
-    let rot: Rotation                                               // Rotation applied
+    let rot: Double                                                 // Rotation applied
+    
+    // Get the ports' locations in
+    func getAbsolutePins(unit: CGFloat) -> [CGPoint] {
+        // We use the symbol width/height to know how far the pins are from center
+        let w = comp.symbol.width * unit
+        let h = comp.symbol.height * unit
+        
+        return comp.symbol.portCoordinates.map { pt in
+            // 1. Calculate the local unrotated position (scaling from units to pixels)
+            let localX = pt.x * w
+            let localY = pt.y * h
+            
+            // 2. Perform coordinate switching (The "Fast" Rotation)
+            var rotatedOffset: CGPoint
+            
+            switch Int(rot) % 360 {
+                case 90, -270:
+                    // (x, y) -> (-y, x)
+                    rotatedOffset = CGPoint(x: -localY, y: localX)
+                case 180, -180:
+                    // (x, y) -> (-x, -y)
+                    rotatedOffset = CGPoint(x: -localX, y: -localY)
+                case 270, -90:
+                    // (x, y) -> (y, -x)
+                    rotatedOffset = CGPoint(x: localY, y: -localX)
+                default: // 0 degrees
+                    rotatedOffset = CGPoint(x: localX, y: localY)
+            }
+            
+            // 3. Add to the component's position on the sheet
+            return CGPoint(
+                x: pos.x + rotatedOffset.x,
+                y: pos.y + rotatedOffset.y
+            )
+        }
+    }
 }

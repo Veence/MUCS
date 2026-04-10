@@ -29,7 +29,7 @@ let categories: [Category] = [
                 portCoordinates: [.init(x: -0.5, y: 0), .init(x: 0.5, y: 0)],
                 path: {unit in
                     
-                    let w = 6 * unit / 16
+                    let w = unit / 2.0
                     let h = unit
                     
                     var path = Path()
@@ -65,7 +65,7 @@ let categories: [Category] = [
                 portCoordinates: [.init(x: -0.5, y: 0), .init(x: 0.5, y: 0)],
                 path: {unit in
                     
-                    let w = 6 * unit / 16
+                    let w = unit / 2.0
                     let h = unit
                     
                     var path = Path()
