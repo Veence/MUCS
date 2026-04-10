@@ -7,14 +7,16 @@ struct ComponentLayer: View {
     
     var body: some View {
         
+        // Components are in sheet coordinates
         ForEach(s.placedComponents, id: \.id) { comp in
-            comp.comp.symbol.path(s.gridSpacing).stroke(.white, lineWidth: 2)
-                .offset(comp.pos)
+            comp.comp.symbol.path(s.screenGrid).stroke(.white, lineWidth: 2)
+                .offset(s._toScreen(loc: comp.pos))
         }
         
+        // The sprite moves in screen coordinates, not sheet
         if let sprite = s.selectedComp, s.mouseIn {
-            sprite.symbol.path(s.gridSpacing).stroke(.blue, lineWidth: 2)
-                .offset(s.mOff)
+            sprite.symbol.path(s.screenGrid).stroke(.blue, lineWidth: 2)
+                .offset(s._toScreen(loc: s.mOff))
         }
     }
 }

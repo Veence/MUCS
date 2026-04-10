@@ -60,6 +60,6 @@ struct PlacedComponent: Identifiable {
     let id: String                                                  // ID
     let name: String                                                // Name (R1, C3…)
     let comp: Component                                             // The component itself
-    let pos: CGSize                                                 // Its coordinates
+    let pos: CGPoint                                                // Its coordinates
     let rot: Rotation                                               // Rotation applied
 }

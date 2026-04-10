@@ -18,19 +18,14 @@ struct MainView: View {
         
     }
     
-    // Snap mouse coordinates to grid
-    func snapToGrid(point: CGPoint) -> CGPoint {
-        CGPoint(x: round(point.x / s.gridSpacing) * s.gridSpacing, y: round(point.y / s.gridSpacing) * s.gridSpacing)
-    }
     
     // Act on mouse click
     func click() {
         // If we have a selected component, place it on the sheet
         if let comp = s.selectedComp, let mP = s.mPos, let rot = s.compRotation {
             let name = comp.name + String (s.getNewIdentifier(forType: comp.type))
-            let pos = CGSize(width: mP.x, height: mP.y)
-            s.placedComponents.append(PlacedComponent(id: UUID().uuidString, name: name, comp: comp, pos: pos, rot: rot))
-            print ("Composant \(name), position \(pos.debugDescription)")
+            s.placedComponents.append(PlacedComponent(id: UUID().uuidString, name: name, comp: comp, pos: mP, rot: rot))
+            print ("Composant \(name), position \(mP.debugDescription)")
         }
     }
     
@@ -67,35 +62,30 @@ struct MainView: View {
             }
             ,detail: {
                 VStack {
-                    ZStack {
+                    ZStack(alignment: .topLeading) {
                         Background(s: s)
+                        Cursor (s: s)
                         ComponentLayer(s: s)
-                        // Scroll view to handle the coordinates
-                        ScrollView([.horizontal, .vertical]) {
-                            Color.clear
-                                .frame(width: s.worldSize * s.zoom, height: s.worldSize * s.zoom)
-                        }
-                        .coordinateSpace(name: CoordinateSpace.named("SheetSpace"))
-                        .onScrollGeometryChange(for: CGPoint.self,
-                                                of: {geom in
-                            let x = geom.contentOffset.x - geom.contentInsets.leading
-                            let y = geom.contentOffset.y + geom.contentInsets.top
-                            return CGPoint(x: x, y: y)})
-                            {_, new in s.offset = new}
                     }
+                    .overlay {CanvasKeyboardInterceptor(s: s)
+                        .allowsHitTesting(true)}
                     .onHover {isIn in s.mouseIn = isIn; if isIn {NSCursor.hide ()} else {NSCursor.unhide ()}}
                     .onContinuousHover { phase in
                         switch phase {
-                            case .active(let location): s.mPos = s.snapToGrid ? snapToGrid (point: location) : location
-                            case .ended: s.mPos = nil; break
+                            case .active(let loc):
+                                s.mScr = loc
+                                let absPos = s._toSheet(loc: loc)
+                                s.mPos = s.snapToGrid ? s.snapPoint(loc: absPos) : absPos
+                            case .ended: s.mScr = nil; s.mPos = nil; break
                         }
                     }
                     .onTapGesture {
                         click ()
                     }
+                    
+                    Spacer ()
+                    Text ("Mouse: \(s.mPos?.debugDescription ?? "---"), Offset: \((s.offset).debugDescription), Zoom: \(s.zoom)")
                 }
-                Spacer ()
-                Text ("Mouse: \((s.mPos ?? .zero).debugDescription), Offset: \(s.offset.debugDescription), Zoom: \(s.zoom)")
             }
         )
     }

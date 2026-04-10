@@ -15,12 +15,30 @@ struct Background: View {
     
     var body: some View {
         Canvas(renderer: {ctx, size in
-            for x in stride(from: s.gridSpacing - s.offset.x, to: size.width, by: s.gridSpacing) {
-                for y in stride(from: s.gridSpacing - s.offset.y, to: size.height, by: s.gridSpacing) {
-                    ctx.stroke(Path(CGRect(x: x * s.zoom, y: y * s.zoom, width: 1, height: 1)),
-                               with: .color(s.gridColor))
+            // Don't draw small grids
+            if s.screenGrid < 10 {return}
+            
+            for x in stride(from: s.gridSpacing, to: s.sheetSize.width, by: s.gridSpacing) {
+                for y in stride(from: s.gridSpacing, to: s.sheetSize.height, by: s.gridSpacing) {
+                    let dot: CGPoint = s._toScreen(loc: CGPoint(x: x, y: y))
+                    if dot.x > 0 && dot.y > 0 && dot.x < size.width && dot.y < size.height {
+                        // Draw only the visible points of the grid
+                        ctx.stroke(Path(CGRect(origin: dot, size: CGSize(width: 1, height: 1))),
+                                   with: .color(s.gridColor))
+                    }
                 }
             }
+            
+            let sCorner: CGPoint = s._toScreen(loc: .zero)
+            let eCorner: CGPoint = s._toScreen(size: s.sheetSize)
+            
+            var p = Path ()
+            p.move(to: sCorner)
+            p.addLine(to: CGPoint(x: eCorner.x, y: sCorner.y))
+            p.addLine(to: eCorner)
+            p.addLine(to: CGPoint(x: sCorner.x,y: eCorner.y))
+            p.addLine(to: sCorner)
+            ctx.stroke(p, with: .color(Color.red))
         }
         )
         .background(s.backgroundColor)
